@@ -1,0 +1,7 @@
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+# Runs the fetch-news function automatically every hour.
+[functions."fetch-news"]
+  schedule = "@hourly"
