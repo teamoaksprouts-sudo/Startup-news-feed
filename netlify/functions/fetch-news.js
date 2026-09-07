@@ -1,7 +1,12 @@
 const Parser = require('rss-parser');
 const { createClient } = require('@supabase/supabase-js');
 
-const parser = new Parser();
+const parser = new Parser({
+  headers: {
+    'User-Agent':
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+  },
+});
 
 // Add or remove feeds here any time.
 const FEEDS = [
@@ -43,7 +48,11 @@ exports.handler = async function () {
         totalInserted += count || 0;
       }
     } catch (err) {
-      console.error(`Failed to fetch ${feed.name}:`, err.message);
+      if (err.message.includes('429')) {
+        console.warn(`${feed.name} rate-limited this run (429) — will retry next hour.`);
+      } else {
+        console.error(`Failed to fetch ${feed.name}:`, err.message);
+      }
     }
   }
 
