@@ -138,16 +138,18 @@ function renderComment(c) {
 
 function handleShare(platform, article) {
   const url = encodeURIComponent(article.link);
-  const text = encodeURIComponent(article.title);
+  const watermarkedText = encodeURIComponent(`${article.title} — via Useful Startups`);
 
   const urls = {
-    whatsapp: `https://wa.me/?text=${text}%20${url}`,
-    x: `https://twitter.com/intent/tweet?text=${text}&url=${url}`,
+    whatsapp: `https://wa.me/?text=${watermarkedText}%20${url}`,
+    x: `https://twitter.com/intent/tweet?text=${watermarkedText}&url=${url}`,
+    // LinkedIn's share dialog only accepts a URL, no custom text field —
+    // the watermark can't be injected here, that's a LinkedIn limitation.
     linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${url}`,
   };
 
   if (platform === 'copy') {
-    navigator.clipboard.writeText(article.link);
+    navigator.clipboard.writeText(`${article.title} — via Useful Startups\n${article.link}`);
     return;
   }
   window.open(urls[platform], '_blank', 'noopener,width=600,height=500');
