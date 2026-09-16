@@ -155,7 +155,13 @@ body {
 }
 
 .share-row { display: flex; gap: 0.35rem; margin-left: auto; }
-.share-btn { padding: 0.35rem 0.55rem; }
+.share-btn {
+  padding: 0.4rem;
+  width: 30px;
+  height: 30px;
+  justify-content: center;
+}
+.share-btn .icon { width: 15px; height: 15px; }
 
 .comment-panel {
   margin-top: 1rem;
