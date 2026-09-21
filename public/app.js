@@ -123,7 +123,7 @@ function renderStory(article, likes, comments) {
 
   // --- Share ---
   node.querySelectorAll('.share-btn').forEach((btn) => {
-    btn.addEventListener('click', () => handleShare(btn.dataset.platform, article));
+    btn.addEventListener('click', () => handleShare(btn.dataset.platform, article, btn));
   });
 
   return node;
@@ -136,9 +136,15 @@ function renderComment(c) {
   return node;
 }
 
-function handleShare(platform, article) {
+function buildShareMessage(article) {
+  return `${article.title}\n${article.link}\n\nFor more such content, visit Useful Startups: https://sites.google.com/view/usefulstartups/`;
+}
+
+function handleShare(platform, article, btnEl) {
   const url = encodeURIComponent(article.link);
-  const watermarkedText = encodeURIComponent(`${article.title} — via Useful Startups`);
+  const watermarkedText = encodeURIComponent(
+    `${article.title} — for more such content, visit Useful Startups:`
+  );
 
   const urls = {
     whatsapp: `https://wa.me/?text=${watermarkedText}%20${url}`,
@@ -149,10 +155,57 @@ function handleShare(platform, article) {
   };
 
   if (platform === 'copy') {
-    navigator.clipboard.writeText(`${article.title} — via Useful Startups\n${article.link}`);
+    copyToClipboard(buildShareMessage(article), btnEl);
     return;
   }
   window.open(urls[platform], '_blank', 'noopener,width=600,height=500');
+}
+
+async function copyToClipboard(text, btnEl) {
+  let copied = false;
+
+  // Primary method — works in normal browser tabs.
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      copied = true;
+    } catch (err) {
+      copied = false; // fall through to the fallback below
+    }
+  }
+
+  // Fallback — needed inside embedded iframes (e.g. your Google Sites
+  // embed) where the Clipboard API is often blocked by the host page.
+  if (!copied) {
+    try {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.left = '-9999px';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      copied = document.execCommand('copy');
+      document.body.removeChild(textarea);
+    } catch (err) {
+      copied = false;
+    }
+  }
+
+  if (btnEl) showCopyFeedback(btnEl, copied);
+  if (!copied) {
+    alert('Could not copy automatically. Please select and copy the link manually.');
+  }
+}
+
+function showCopyFeedback(btnEl, success) {
+  const original = btnEl.innerHTML;
+  btnEl.innerHTML = success
+    ? '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>'
+    : '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+  setTimeout(() => {
+    btnEl.innerHTML = original;
+  }, 1500);
 }
 
 function timeAgo(dateStr) {
