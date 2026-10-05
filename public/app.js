@@ -151,7 +151,7 @@ function handleShare(platform, article, btnEl) {
     x: `https://twitter.com/intent/tweet?text=${watermarkedText}&url=${url}`,
     // LinkedIn's share dialog only accepts a URL, no custom text field —
     // the watermark can't be injected here, that's a LinkedIn limitation.
-    linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${url}`,
+    linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${url}`,\n    // Instagram does not expose a web URL-share dialog like LinkedIn.\n    // Open Instagram so the visitor can share the article manually.\n    instagram: 'https://www.instagram.com/',
   };
 
   if (platform === 'copy') {
