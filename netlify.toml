@@ -2,6 +2,9 @@
   publish = "public"
   functions = "netlify/functions"
 
-# Runs the fetch-news function automatically every hour.
 [functions."fetch-news"]
+  schedule = "@hourly"
+
+# Runs hourly; the Google Sheet decides the exact posting days/time.
+[functions."social-post"]
   schedule = "@hourly"
