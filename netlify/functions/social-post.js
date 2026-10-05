@@ -18,7 +18,10 @@ exports.handler = async function () {
   if (sheet.settings.linkedin) platforms.push('linkedin');
   if (sheet.settings.instagram) platforms.push('instagram');
   const results = [];
+  const { data: previousPosts } = await supabase.from('social_posts').select('platform').eq('article_id', article.id).eq('status', 'published');
+  const alreadyPublished = new Set((previousPosts || []).map(p => p.platform));
   for (const platform of platforms) {
+    if (alreadyPublished.has(platform)) { results.push({ ok: true, skipped: true, platform, reason: 'already_published' }); continue; }
     const result = await publish(platform, article, sheet.settings);
     results.push(result);
     await supabase.from('social_posts').insert({
@@ -36,14 +39,22 @@ async function chooseArticle(supabase, sheet) {
   const { data: articles, error } = await supabase.from('articles').select('*').order('published_at', { ascending: false }).limit(50);
   if (error) throw new Error(error.message);
   const { data: history } = await supabase.from('social_posts').select('article_id, platform').eq('status', 'published');
-  const publishedIds = new Set((history || []).map(h => h.article_id));
+  const enabledPlatforms = [];
+  if (sheet.settings.linkedin) enabledPlatforms.push('linkedin');
+  if (sheet.settings.instagram) enabledPlatforms.push('instagram');
+  const publishedByArticle = new Map();
+  for (const h of history || []) {
+    if (!publishedByArticle.has(h.article_id)) publishedByArticle.set(h.article_id, new Set());
+    publishedByArticle.get(h.article_id).add(h.platform);
+  }
   if (forced) {
     const match = articles.find(a => a.link === forced.article_url || a.id === forced.article_id);
     if (match) { match._manual = true; return match; }
   }
   const keywords = sheet.settings.keywords;
   const candidates = articles.filter(a => {
-    if (publishedIds.has(a.id)) return false;
+    const posted = publishedByArticle.get(a.id) || new Set();
+    if (enabledPlatforms.length && enabledPlatforms.every(p => posted.has(p))) return false;
     if (!keywords.length) return true;
     const haystack = (a.title + ' ' + (a.summary || '') + ' ' + a.source).toLowerCase();
     return keywords.some(k => haystack.includes(k.toLowerCase()));
