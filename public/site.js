@@ -3,7 +3,7 @@
 (function(){
 // ====== CONFIG: paste each new tab's gid (the number after "gid=" in its published link) ======
 const SHEET="https://docs.google.com/spreadsheets/d/e/2PACX-1vSnzz7ZtIZdVOzq9FJLG0x1Hz2Y6XYNkTsveYm_sJheBoPIP-jhL27SBGl57CLMJirXvzjSQ4X-CMmB/pub";
-const GIDS={ledger:"0",settings:"",nav:"",pages:"",team:"",highlights:""};
+const GIDS={ledger:"0",settings:"2125262912",nav:"763580476",pages:"1940886012",team:"2027713606",highlights:"1687804525"};
 // Until a gid is filled in, the built-in defaults below are used, so the site works on day one.
 
 const DEF={
