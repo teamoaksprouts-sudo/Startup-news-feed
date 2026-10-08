@@ -1,0 +1,9 @@
+Label,URL,Location,Order,Visible
+Home,index.html,header,1,yes
+Ledger,ledger.html,both,2,yes
+News,news.html,both,3,yes
+About,about.html,both,4,yes
+Team,team.html,both,5,yes
+Contact,contact.html,both,6,yes
+Terms,terms.html,footer,7,yes
+Privacy,privacy.html,footer,8,yes

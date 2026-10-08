@@ -1,0 +1,7 @@
+Page,Order,Heading,Body,Link,Visible
+home,1,The Active Ledger,"Search, filter and compare startups by sector, tech and investors.",ledger.html,yes
+home,2,The Runway,Fresh startup and business news refreshed every hour.,news.html,yes
+home,3,Suggest a startup,Know one that belongs here? Send it in for review.,ledger.html,yes
+about,1,Our mission,"Write your story here. Blank line = new paragraph. Use **bold**, [links](https://example.com) and lines starting with - for bullets.",,yes
+terms,1,1. Acceptance,Replace with your lawyer-reviewed terms.,,yes
+privacy,1,1. What we collect,Replace with your lawyer-reviewed privacy policy.,,yes

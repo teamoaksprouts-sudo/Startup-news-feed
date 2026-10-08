@@ -1,0 +1,4 @@
+Value,Label,Order,Visible
+auto:startups,Startups tracked,1,yes
+Hourly,News refresh,2,yes
+100%,Free to browse,3,yes
