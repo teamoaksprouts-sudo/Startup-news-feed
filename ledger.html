@@ -1,0 +1,1381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Ledger — Indian Startup Directory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  :root{
+    --ink: #0B1220;
+    --ink-2: #121B2E;
+    --paper: #F2EFE9;
+    --paper-dim: #C9C4B8;
+    --gold: #D9A441;
+    --gold-dim: #8a6f30;
+    --teal: #3A8F8A;
+    --rule: rgba(242,239,233,0.14);
+    --red: #C1543C;
+    --indigo: #7C8CD9;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: var(--ink);
+    color: var(--paper);
+    font-family: 'Space Grotesk', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection{ background: var(--gold); color: var(--ink); }
+
+  /* ---------- Ticker ---------- */
+  .ticker-wrap{
+    border-bottom: 1px solid var(--rule);
+    background: var(--ink-2);
+    overflow: hidden;
+    white-space: nowrap;
+    padding: 9px 0;
+  }
+  .ticker{
+    display: inline-block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+    letter-spacing: 0.02em;
+    /* Fallback duration only — buildTicker() below overrides this inline,
+       calculated from actual content width, so scroll speed (px/sec) stays
+       constant no matter how many startups are in the sheet. */
+    animation: scroll 45s linear infinite;
+  }
+  .ticker span{ margin-right: 40px; color: var(--paper-dim); }
+  .ticker span b{ color: var(--gold); font-weight: 600; }
+  @keyframes scroll{
+    0%{ transform: translateX(0); }
+    100%{ transform: translateX(-50%); }
+  }
+  @media (prefers-reduced-motion: reduce){ .ticker{ animation: none; } }
+
+  /* ---------- Header ---------- */
+  header{
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 56px 24px 28px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .eyebrow{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 14px;
+  }
+  h1{
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: clamp(38px, 6vw, 64px);
+    line-height: 1.02;
+    margin: 0 0 14px;
+    letter-spacing: -0.01em;
+  }
+  h1 em{ font-style: italic; color: var(--gold); }
+  .sub{
+    max-width: 560px;
+    color: var(--paper-dim);
+    font-size: 15.5px;
+    line-height: 1.55;
+  }
+  .stat-row{
+    display: flex; gap: 36px; margin-top: 30px; flex-wrap: wrap;
+  }
+  .stat b{
+    display:block; font-family:'IBM Plex Mono',monospace;
+    font-size: 26px; color: var(--paper);
+  }
+  .stat span{ font-size: 11.5px; color: var(--paper-dim); text-transform: uppercase; letter-spacing: 0.08em; }
+
+  .header-flex{
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 40px;
+    flex-wrap: wrap;
+  }
+  .header-text{ flex: 1 1 420px; min-width: 280px; }
+  .header-carousel{
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    padding-top: 4px;
+  }
+
+  /* ---------- Featured carousel (portrait cards) ---------- */
+  .feat-label{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--gold-dim);
+    align-self: flex-start;
+    margin-left: 4px;
+  }
+  .feat-carousel{
+    position: relative;
+    width: 270px;
+    height: 165px;
+  }
+  .feat-track{ position: relative; width: 100%; height: 100%; }
+
+  .feat-card{
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 215px;
+    height: 128px;
+    border-radius: 5px;
+    background: var(--ink-2);
+    border: 1px solid var(--rule);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: 0 18px 36px -16px rgba(0,0,0,0.65);
+    cursor: pointer;
+    overflow: hidden;
+    transition: transform .7s cubic-bezier(.65,0,.35,1),
+                opacity .7s cubic-bezier(.65,0,.35,1),
+                filter .7s cubic-bezier(.65,0,.35,1);
+  }
+  .feat-card::before{
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(217,164,65,0.10), transparent 55%);
+    pointer-events: none;
+  }
+  .feat-card-top{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .feat-logo, .feat-logo-fallback{
+    width: 26px; height: 26px; border-radius: 3px;
+    background: var(--ink); border: 1px solid var(--rule);
+    flex-shrink: 0;
+  }
+  .feat-logo{
+    object-fit: contain;
+    background: var(--paper);
+    padding: 3px;
+  }
+  .feat-logo-fallback{
+    display:flex; align-items:center; justify-content:center;
+    font-family: 'Fraunces', serif; color: var(--gold); font-size: 10.5px;
+  }
+  .feat-card-bottom{ display: flex; flex-direction: column; gap: 4px; }
+  .feat-name{
+    font-family: 'Fraunces', serif;
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1.16;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .feat-loc-fund{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9.5px;
+    color: var(--paper-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .feat-loc-fund .feat-funding{ color: var(--gold); }
+  .feat-sector{
+    font-family: 'IBM Plex Mono', monospace; font-size: 8.5px; color: var(--teal);
+    border: 1px solid var(--teal); padding: 2px 6px; border-radius: 20px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px;
+    flex-shrink: 0;
+  }
+
+  .feat-card[data-pos="center"]{ transform: translate(-50%,-50%) scale(1); opacity: 1; filter: none; z-index: 5; }
+  .feat-card[data-pos="left"]{ transform: translate(-50%,-50%) translateX(-100px) scale(.8) rotateY(6deg); opacity: .5; filter: brightness(.65); z-index: 3; }
+  .feat-card[data-pos="right"]{ transform: translate(-50%,-50%) translateX(100px) scale(.8) rotateY(-6deg); opacity: .5; filter: brightness(.65); z-index: 3; }
+  .feat-card[data-pos="far-left"]{ transform: translate(-50%,-50%) translateX(-175px) scale(.65); opacity: 0; z-index: 1; }
+  .feat-card[data-pos="far-right"]{ transform: translate(-50%,-50%) translateX(175px) scale(.65); opacity: 0; z-index: 1; }
+  .feat-card[data-pos="hidden"]{ transform: translate(-50%,-50%) scale(.5); opacity: 0; z-index: 0; pointer-events: none; }
+
+  .feat-controls{ display: flex; align-items: center; gap: 14px; }
+  .feat-arrow{
+    width: 26px; height: 26px; border-radius: 50%;
+    border: 1px solid var(--rule); background: transparent; color: var(--paper-dim);
+    font-size: 15px; line-height: 1; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: border-color .2s, color .2s;
+  }
+  .feat-arrow:hover{ border-color: var(--gold); color: var(--gold); }
+  .feat-dots{ display: flex; gap: 6px; }
+  .feat-dot{
+    width: 5px; height: 5px; border-radius: 50%; border: none; padding: 0;
+    background: var(--rule); cursor: pointer; transition: background .2s, transform .2s;
+  }
+  .feat-dot.active{ background: var(--gold); transform: scale(1.4); }
+  .feat-empty{
+    width: 270px; padding: 30px 16px; text-align: center;
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--paper-dim);
+    border: 1px dashed var(--rule); border-radius: 5px;
+  }
+
+  @media (max-width: 760px){
+    .header-carousel{ align-items: center; margin: 0 auto; }
+  }
+
+  /* ---------- Controls ---------- */
+  .controls{
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 22px 24px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+    border-bottom: 1px solid var(--rule);
+    position: sticky;
+    top: var(--ul-nav-h, 0px);
+    background: rgba(11,18,32,0.92);
+    backdrop-filter: blur(6px);
+    z-index: 10;
+  }
+  input[type="text"], select{
+    background: var(--ink-2);
+    border: 1px solid var(--rule);
+    color: var(--paper);
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 13.5px;
+    padding: 10px 14px;
+    border-radius: 3px;
+    outline: none;
+  }
+  input[type="text"]{ flex: 1; min-width: 200px; }
+  input[type="text"]:focus, select:focus{ border-color: var(--gold); }
+  select{ cursor: pointer; }
+  .count-pill{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--gold);
+    white-space: nowrap;
+    margin-left: auto;
+  }
+
+  /* ---------- Grid ---------- */
+  main{ max-width: 1180px; margin: 0 auto; padding: 30px 24px 100px; }
+  .grid{
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+  }
+  .card{
+    background: var(--ink);
+    padding: 22px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    position: relative;
+  }
+  .card:hover{ background: var(--ink-2); }
+  .card-top{ display:flex; align-items:center; gap: 12px; margin-bottom: 14px; }
+  .logo, .logo-fallback{
+    width: 42px; height: 42px; border-radius: 3px;
+    border: 1px solid var(--rule);
+    flex-shrink: 0;
+  }
+  .logo{
+    object-fit: contain;
+    background: var(--paper);
+    padding: 5px;
+  }
+  .logo-fallback{
+    background: var(--ink-2);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Fraunces',serif; color: var(--gold); font-size:17px;
+  }
+  .card-name{ font-family:'Fraunces', serif; font-size: 19px; font-weight: 500; line-height:1.15; }
+  .card-loc{ font-family:'IBM Plex Mono', monospace; font-size: 11px; color: var(--paper-dim); margin-top:2px; }
+  .card-tagline{ font-size: 13.5px; color: var(--paper-dim); line-height:1.5; margin-bottom: 16px; min-height: 40px; }
+  .card-edge{ margin: -4px 0 16px; padding: 10px 12px; border-left: 2px solid var(--gold); background: var(--ink-2); }
+  .card-edge span{ display:block; font-family:'IBM Plex Mono',monospace; font-size:9px; letter-spacing:.08em; color:var(--gold); margin-bottom:4px; }
+  .card-edge p{ margin:0; font-size:12px; line-height:1.45; color:var(--paper-dim); }
+  .compare-btn{ margin-top:14px; border:1px solid var(--teal); background:transparent; color:var(--teal); border-radius:3px; padding:7px 10px; font:11px 'IBM Plex Mono',monospace; cursor:pointer; }
+  .compare-btn.selected{ background:var(--teal); color:var(--ink); }
+  .compare-tray{ position:fixed; z-index:30; left:50%; bottom:18px; transform:translateX(-50%); width:min(700px,calc(100% - 28px)); background:var(--ink-2); border:1px solid var(--gold-dim); box-shadow:0 8px 30px #0008; padding:12px 14px; display:none; }
+  .compare-tray.visible{ display:block; }
+  .compare-tray-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+  .compare-tray-actions{ display:flex; gap:8px; align-items:center; }
+  .compare-tray button{ border:1px solid var(--rule); background:transparent; color:var(--paper); padding:7px 10px; cursor:pointer; font:11px 'IBM Plex Mono',monospace; }
+  .compare-tray button.primary{ background:var(--gold); color:var(--ink); border-color:var(--gold); }
+  .compare-chips{ display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+  .compare-chip{ border:1px solid var(--rule); padding:4px 8px; font-size:11px; color:var(--paper-dim); }
+  .compare-table{ width:100%; border-collapse:collapse; font-size:12px; min-width:520px; }
+  .compare-table th,.compare-table td{ border:1px solid var(--rule); padding:10px; text-align:left; vertical-align:top; }
+  .compare-table th{ color:var(--gold); font-family:'IBM Plex Mono',monospace; font-weight:500; }
+  .compare-scroll{ overflow-x:auto; margin-top:18px; }
+  .card-meta{ display:flex; justify-content: space-between; align-items:flex-end; border-top: 1px dashed var(--rule); padding-top: 12px; }
+  .funding{ font-family:'IBM Plex Mono', monospace; font-size: 14px; color: var(--gold); }
+  .funding-label{ display:block; font-size: 10px; color: var(--paper-dim); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:3px; }
+  .funding-stage{
+    font-family:'IBM Plex Mono', monospace; font-size: 10px; color: var(--paper-dim);
+    text-transform: uppercase; letter-spacing: 0.05em; margin-left: 7px;
+  }
+  .sector-tag{
+    font-family:'IBM Plex Mono', monospace; font-size: 10.5px; color: var(--teal);
+    border: 1px solid var(--teal); padding: 3px 8px; border-radius: 20px;
+  }
+  .sector-tag.clickable, .investor-pill.clickable, .tech-pill.clickable{ cursor: pointer; transition: background .15s, color .15s; }
+  .sector-tag.clickable:hover{ background: var(--teal); color: var(--ink); }
+  .investor-pill{
+    font-family:'IBM Plex Mono', monospace; font-size: 10.5px; color: var(--gold);
+    border: 1px solid var(--gold); padding: 3px 8px; border-radius: 20px;
+  }
+  .investor-pill.clickable:hover{ background: var(--gold); color: var(--ink); }
+  .tech-pill{
+    font-family:'IBM Plex Mono', monospace; font-size: 10.5px; color: var(--red);
+    border: 1px solid var(--red); padding: 3px 8px; border-radius: 20px;
+  }
+  .tech-pill.clickable:hover{ background: var(--red); color: var(--paper); }
+  .founder-pill{
+    font-family:'IBM Plex Mono', monospace; font-size: 10.5px; color: var(--indigo);
+    border: 1px solid var(--indigo); padding: 3px 8px; border-radius: 20px;
+  }
+  .founder-pill.clickable{ cursor: pointer; transition: background .15s, color .15s; }
+  .founder-pill.clickable:hover{ background: var(--indigo); color: var(--ink); }
+  .featured-mark{ position:absolute; top:18px; right:18px; color: var(--red); font-size: 15px; }
+
+  .empty{ text-align:center; padding: 80px 20px; color: var(--paper-dim); font-family:'IBM Plex Mono',monospace; font-size:13px; }
+
+  /* ---------- Modal ---------- */
+  .overlay{
+    display:none; position: fixed; inset:0; background: rgba(11,18,32,0.82);
+    z-index: 100; padding: 40px 20px; overflow-y:auto;
+  }
+  .overlay.open{ display:block; }
+  #listOverlay{ z-index: 150; }
+  .modal{
+    max-width: 640px; margin: 0 auto; background: var(--ink-2);
+    border: 1px solid var(--rule); padding: 40px; position:relative;
+  }
+  .modal-close{
+    position:absolute; top:20px; right:24px; background:none; border:none;
+    color: var(--paper-dim); font-size: 22px; cursor:pointer; font-family:'Space Grotesk',sans-serif;
+  }
+  .modal-close:hover{ color: var(--paper); }
+  .modal-head{ display:flex; gap:16px; align-items:center; margin-bottom: 24px; }
+  .modal-head .logo, .modal-head .logo-fallback{ width: 60px; height:60px; font-size:24px; }
+  .modal-head .logo{ padding: 8px; }
+  .modal h2{ font-family:'Fraunces',serif; font-weight:500; font-size: 28px; margin:0 0 4px; }
+  .modal .card-loc{ font-size: 12px; }
+  .modal-tagline{ font-size: 15px; color: var(--paper-dim); margin-bottom: 26px; line-height:1.5; }
+  .field-grid{ display:grid; grid-template-columns: 1fr 1fr; gap: 20px 24px; margin-bottom: 26px; }
+  .field label{ display:block; font-family:'IBM Plex Mono',monospace; font-size:10px; text-transform:uppercase; letter-spacing:0.07em; color: var(--gold-dim); margin-bottom: 5px; }
+  .field div{ font-size: 13.5px; line-height:1.45; }
+  .pill-group{ margin-bottom: 22px; }
+  .pill-group-label{
+    font-family:'IBM Plex Mono',monospace; font-size:10px; text-transform:uppercase;
+    letter-spacing:0.07em; color: var(--gold-dim); margin-bottom: 8px;
+  }
+  .pill-row{ display:flex; gap:6px; flex-wrap:wrap; }
+  .visit-btn{
+    display:inline-block; background: var(--gold); color: var(--ink); text-decoration:none;
+    font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:600; padding: 12px 22px;
+    border-radius: 3px;
+  }
+  .visit-btn:hover{ background: #eab554; }
+
+  /* ---------- List popup (tag / investor results) ---------- */
+  .list-rows{
+    display:flex; flex-direction:column; gap:1px;
+    background: var(--rule); border: 1px solid var(--rule);
+  }
+  .list-row{
+    background: var(--ink); padding: 14px 16px;
+    display:flex; align-items:center; gap:14px;
+    cursor: pointer; transition: background .15s ease;
+  }
+  .list-row:hover{ background: var(--ink-2); }
+  .list-row-info{ flex:1; min-width:0; }
+  .list-row-info .card-name{ font-size: 15.5px; }
+
+  footer{ text-align:center; padding: 30px; color: var(--paper-dim); font-family:'IBM Plex Mono',monospace; font-size:11px; border-top:1px solid var(--rule); }
+
+  /* ---------- Suggest-a-startup button + form ---------- */
+  .suggest-btn{
+    display: inline-flex; align-items: center; gap: 8px;
+    margin-top: 26px;
+    background: var(--gold); color: var(--ink); border: none; cursor: pointer;
+    font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600;
+    padding: 12px 20px; border-radius: 3px; text-decoration: none;
+  }
+  .suggest-btn:hover{ background: #eab554; }
+  #submitOverlay{ z-index: 160; }
+  .form-field{ margin-bottom: 18px; }
+  .form-field label{
+    display:block; font-family:'IBM Plex Mono',monospace; font-size:10px; text-transform:uppercase;
+    letter-spacing:0.07em; color: var(--gold-dim); margin-bottom: 6px;
+  }
+  .required-mark{ color: var(--red); }
+  .form-field input[type="text"], .form-field input[type="email"], .form-field input[type="url"],
+  .form-field select, .form-field textarea{
+    width: 100%; background: var(--ink); border: 1px solid var(--rule); color: var(--paper);
+    font-family: 'Space Grotesk', sans-serif; font-size: 14px; padding: 10px 12px;
+    border-radius: 3px; outline: none;
+  }
+  .form-field input:focus, .form-field select:focus, .form-field textarea:focus{ border-color: var(--gold); }
+  .form-field textarea{ resize: vertical; min-height: 70px; }
+  .form-honeypot{ position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  .form-submit-btn{
+    background: var(--gold); color: var(--ink); border: none; cursor: pointer;
+    font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 13px;
+    padding: 12px 22px; border-radius: 3px;
+  }
+  .form-submit-btn:hover{ background: #eab554; }
+  .form-submit-btn:disabled{ opacity: 0.6; cursor: not-allowed; }
+  .form-status{ margin-top: 14px; font-size: 13px; font-family: 'IBM Plex Mono', monospace; }
+  .form-status.success{ color: #6fbf73; }
+  .form-status.error{ color: var(--red); }
+
+  @media (max-width: 560px){
+    .field-grid{ grid-template-columns: 1fr; }
+    .stat-row{ gap: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="ticker-wrap"><div class="ticker" id="ticker"></div></div>
+
+<header>
+  <div class="header-flex">
+    <div class="header-text">
+      <div class="eyebrow">Vol. 01 — Live Feed</div>
+      <h1>The Startup <em>Ledger</em></h1>
+      <p class="sub">A running register of India's startups — who's building what, who's backing them, and where they stand. Sourced straight from the sheet, updated the moment a new row lands.</p>
+      <div class="stat-row" id="statRow"></div>
+      <button class="suggest-btn" onclick="openSubmitModal()">+ Suggest a startup</button>
+    </div>
+    <div class="header-carousel" id="featCarouselWrap"></div>
+  </div>
+</header>
+
+<div class="controls">
+  <input type="text" id="search" placeholder="Search by name, founder, or investor…">
+  <select id="sectorFilter"><option value="">All sectors</option></select>
+  <select id="techFilter"><option value="">All underlying tech</option></select>
+  <select id="statusFilter"><option value="">All status</option></select>
+  <select id="sortBy">
+    <option value="name">Sort: Name (A–Z)</option>
+    <option value="year-desc">Sort: Newest founded</option>
+    <option value="year-asc">Sort: Oldest founded</option>
+    <option value="featured">Sort: Featured first</option>
+  </select>
+  <span class="count-pill" id="countPill">loading…</span>
+  <span class="count-pill" id="syncBadge" style="margin-left:0;"></span>
+</div>
+
+<main>
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="emptyMsg" style="display:none;">No startups match that filter — try clearing search.</div>
+</main>
+
+<footer>THE STARTUP LEDGER — DATA SOURCED LIVE FROM GOOGLE SHEETS</footer>
+<div class="compare-tray" id="compareTray">
+  <div class="compare-tray-head">
+    <strong><span id="compareCount">0</span>/4 selected for comparison</strong>
+    <div class="compare-tray-actions">
+      <button type="button" id="clearCompare">Clear</button>
+      <button type="button" class="primary" id="openCompare" disabled>Compare selected</button>
+    </div>
+  </div>
+  <div class="compare-chips" id="compareChips"></div>
+</div>
+<div class="overlay" id="compareOverlay"><div class="modal" id="compareModalContent"></div></div>
+
+<div class="overlay" id="overlay">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<div class="overlay" id="listOverlay">
+  <div class="modal" id="listModalContent"></div>
+</div>
+
+<div class="overlay" id="submitOverlay">
+  <div class="modal" id="submitModalContent">
+    <button class="modal-close" onclick="closeSubmitModal()">&times;</button>
+    <h2 style="margin-bottom:6px;">Suggest a Startup</h2>
+    <p class="modal-tagline" style="margin-bottom:24px;">Know a startup that belongs here — your own, or one you'd recommend? Tell us about it. Every suggestion is reviewed by hand before anything goes live.</p>
+    <form id="submitForm">
+      <div class="form-field">
+        <label>Your Name <span class="required-mark">*</span></label>
+        <input type="text" name="submitterName" required>
+      </div>
+      <div class="form-field">
+        <label>Your Email <span class="required-mark">*</span></label>
+        <input type="email" name="submitterEmail" required>
+      </div>
+      <div class="form-field">
+        <label>Relationship <span class="required-mark">*</span></label>
+        <select name="relationship" required>
+          <option value="">Select one…</option>
+          <option value="Founder / Team">This is my own startup</option>
+          <option value="Recommendation">I'm recommending someone else's</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Startup Status <span class="required-mark">*</span></label>
+        <select name="startupStatus" required>
+          <option value="">Select status...</option>
+          <option value="Active">Active</option>
+          <option value="Failed">Failed</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Startup Name <span class="required-mark">*</span></label>
+        <input type="text" name="startupName" required>
+      </div>
+      <div class="form-field">
+        <label>Startup Website</label>
+        <input type="url" name="startupWebsite" placeholder="https://">
+      </div>
+      <div class="form-field">
+        <label>One-line Description <span class="required-mark">*</span></label>
+        <input type="text" name="tagline" required placeholder="What do they actually do?">
+      </div>
+      <div class="form-field">
+        <label>Sector</label>
+        <input type="text" name="sector" placeholder="e.g. FinTech, SpaceTech, SaaS">
+      </div>
+      <div class="form-field">
+        <label>Anything else?</label>
+        <textarea name="notes" placeholder="Funding, traction, why it belongs here — optional"></textarea>
+      </div>
+      <!-- Honeypot: invisible to real visitors, but a bot filling every field will fill this too.
+           If it comes back non-empty, we quietly drop the submission instead of sending it. -->
+      <div class="form-honeypot" aria-hidden="true">
+        <label for="website_confirm">Leave this field empty</label>
+        <input type="text" id="website_confirm" name="website_confirm" tabindex="-1" autocomplete="off">
+      </div>
+      <button type="submit" class="form-submit-btn" id="submitFormBtn">Send suggestion</button>
+      <div id="submitFormStatus" class="form-status"></div>
+    </form>
+  </div>
+</div>
+
+<script>
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSnzz7ZtIZdVOzq9FJLG0x1Hz2Y6XYNkTsveYm_sJheBoPIP-jhL27SBGl57CLMJirXvzjSQ4X-CMmB/pub?gid=0&single=true&output=csv";
+
+// Baked-in snapshot of the sheet, used so the page works immediately even when the
+// live network request is blocked by the preview sandbox. If this file is hosted on
+// a real domain (GitHub Pages, Netlify, your own server, etc.), the live fetch below
+// will succeed and silently replace this snapshot with fresh data on every page load.
+const FALLBACK_CSV = `Startup Name,Tagline / Description,Headquarters,Founded In,Funding Amount,Funding Stage,Business Model,Founders,Sector,Team Size,Primary Competition,Key Investors,User Base,Logo URL,Website URL,Featured,Status,Tags,Underlying Tech,Competitive Edge
+Aigenc.ai,Building The AI Martech Stack,Delhi NCR,2026,Bootstrapped,Pre-Seed,B2B,"Vishal Gupta, Prashant Sinha, Sumit Solanki",Horizontal SaaS,2-10,"Envigo, Keenfolks",-,-,https://drive.google.com/file/d/1kPAVtsbsCMVeL74AFKJd9KjiN4iVsNe5/view?usp=sharing,https://aigenc.ai/,Yes,Active,"AI, Generative AI, MarTech, Marketing, Creative Intelligence, Advertising, SaaS, B2B","LLM Orchestration, Ad Creative Generation"
+AnduraX,Making Return From Space As Routine As Aviation,Hyderabad,2024,Undisclosed,Seed,"B2B, B2G","Sree Supranayi Kanamarlapudi, Nirvik Choudhury",Space Tech,2-10,"AgenticOrg, Kartha AI, SpaceX (US), Sierra Space (US)",Riceberg Ventures,-,https://drive.google.com/file/d/1wjVg9Eri_3hdFL0VImwDW4PW8kjRULbK/view?usp=sharing,https://www.andurax.com/,Yes,Active,"SpaceTech, Aerospace, Rockets, Reusable Launch Vehicle, Autonomous Systems, DeepTech, Defence, Propulsion","Reusable Rocket Propulsion, Autonomous Guidance & Control"
+Arta AI,Infrastructure For Modern Brand Builders,Surat,2025,Bootstrapped,Pre-Seed,B2B,Ritesh Shah,Ecommerce Enabler,2-10,"ShopOS, Interakt",Peak XV Partners,-,https://drive.google.com/file/d/1B0iKUNQdZW_bFpNQ7Q1pKMyXAd5UhyCs/view?usp=sharing,https://arta.ai/,-,Active,"FinTech, AI, WealthTech, Generative AI, Financial Advisory, Wealth Management, Investment, B2B SaaS","LLM Orchestration, Payment Orchestration"
+Astrobase Space,Building Operational Backbone For Space Access,Ahmedabad,2024,Undisclosed,Seed,B2B,"Devakumar Thammisetty, Neeraj Khandelwal",Space Tech,11-50,"Skyroot Aerospace, Agnikul Cosmos",IN-SPACe,-,https://drive.google.com/file/d/1LcoGvBiHJcFEjnUKcBrnJUKnoXypJE-H/view?usp=sharing,https://www.astrobase.in/,Yes,Active,"SpaceTech, Aerospace, Rocket Engines, Propulsion, Launch Vehicles, DeepTech, Defence, NewSpace","Reusable Rocket Propulsion, Autonomous Guidance & Control"`;
+
+// ============================================================
+// FOUNDERS LOOKUP
+// A separate small tab — one row per person — so a founder's
+// LinkedIn and business history only has to be entered once, even
+// if they appear on multiple startup rows. Fetched independently
+// from the main sheet; if this fails or isn't configured yet, the
+// page still works fine, founder names just won't be clickable.
+//
+// SETUP REQUIRED: create a "Founders" tab with exactly these
+// headers: Founder Name, LinkedIn URL, Startups / Businesses
+// (comma-separated for multiple). Publish that tab to web as CSV
+// (same process as your other tabs) and paste the link below.
+// ============================================================
+const FOUNDERS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSnzz7ZtIZdVOzq9FJLG0x1Hz2Y6XYNkTsveYm_sJheBoPIP-jhL27SBGl57CLMJirXvzjSQ4X-CMmB/pub?gid=245996823&single=true&output=csv";
+
+const FOUNDERS_FALLBACK_CSV = `Founder Name,LinkedIn URL,Startups / Businesses
+Vishal Gupta,https://linkedin.com/in/example,"Aigenc.ai, A previous martech venture (not tracked)"`;
+
+let FOUNDERS_LOOKUP = {};
+
+function buildFoundersLookup(text){
+  const results = Papa.parse(text, { header: true, skipEmptyLines: true });
+  const lookup = {};
+  results.data.forEach(row => {
+    const name = clean(row['Founder Name']);
+    if (!name) return;
+    lookup[name.toLowerCase()] = {
+      displayName: name,
+      linkedin: clean(row['LinkedIn URL']),
+      businesses: splitList(row['Startups / Businesses'])
+    };
+  });
+  return lookup;
+}
+
+function loadFoundersData(){
+  // Parse the fallback immediately so founder pills work even before (or without) a live fetch.
+  FOUNDERS_LOOKUP = buildFoundersLookup(FOUNDERS_FALLBACK_CSV);
+
+  if(!FOUNDERS_CSV_URL || FOUNDERS_CSV_URL.indexOf("PASTE_YOUR") === 0){
+    console.warn("Founders CSV not configured yet — founder pills will use the fallback snapshot only.");
+    return;
+  }
+
+  fetch(FOUNDERS_CSV_URL, { cache: "no-store" })
+    .then(res => { if(!res.ok) throw new Error(`HTTP ${res.status}`); return res.text(); })
+    .then(text => {
+      if(!text || text.trim().length === 0) throw new Error("Empty response");
+      FOUNDERS_LOOKUP = buildFoundersLookup(text);
+    })
+    .catch(() => {
+      // Silent fail — fallback lookup is already in place, same philosophy as the main CSV fetch.
+    });
+}
+
+let ALL = [];
+
+function driveDirectLink(url){
+  if(!url || url === '-' ) return null;
+  const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+  if(m) return `https://drive.google.com/thumbnail?id=${m[1]}&sz=w300`;
+  return url;
+}
+
+function initials(name){
+  return name.split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+}
+
+function clean(v){ return (v === undefined || v === null || v.trim() === '-' ) ? '' : v.trim(); }
+
+// Splits a comma-separated cell (tags, investors) into a clean array of trimmed values.
+function splitList(v){
+  return clean(v).split(',').map(x=>x.trim()).filter(Boolean);
+}
+
+function render(list){
+  const grid = document.getElementById('grid');
+  const empty = document.getElementById('emptyMsg');
+  grid.innerHTML = '';
+  document.getElementById('countPill').textContent = `${list.length} LISTED`;
+  if(list.length === 0){ empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+
+  list.forEach(row=>{
+    const card = document.createElement('div');
+    card.className = 'card';
+    const logoUrl = driveDirectLink(row['Logo URL']);
+    const featured = clean(row['Featured']).toLowerCase() === 'yes';
+    const stage = clean(row['Funding Stage']);
+    card.innerHTML = `
+      ${featured ? '<div class="featured-mark">★</div>' : ''}
+      <div class="card-top">
+        ${logoUrl ? `<img class="logo" src="${logoUrl}" onerror="this.outerHTML='<div class=logo-fallback>${initials(row['Startup Name'])}</div>'">` : `<div class="logo-fallback">${initials(row['Startup Name'])}</div>`}
+        <div>
+          <div class="card-name">${row['Startup Name']}</div>
+          <div class="card-loc">${clean(row['Headquarters']) || '—'} · EST. ${clean(row['Founded In']) || '—'}</div>
+        </div>
+      </div>
+      <div class="card-tagline">${row['Tagline / Description'] || ''}</div>
+      ${clean(row['Competitive Edge']) ? `<div class="card-edge"><span>COMPETITIVE EDGE</span><p>${clean(row['Competitive Edge'])}</p></div>` : ''}
+      <div class="card-meta">
+        <div>
+          <span class="funding-label">Funding</span>
+          <span class="funding">${clean(row['Funding Amount']) || '—'}</span>${stage ? `<span class="funding-stage">${stage}</span>` : ''}
+        </div>
+        <div class="sector-tag">${clean(row['Sector']) || '—'}</div>
+      </div>
+      <button type="button" class="compare-btn" data-compare="${encodeURIComponent(row['Startup Name'])}">+ Compare</button>
+    `;
+    card.addEventListener('click', ()=> openModal(row));
+    card.querySelector('.compare-btn').addEventListener('click', e=>{ e.stopPropagation(); toggleCompare(row); });
+    grid.appendChild(card);
+  });
+}
+
+function openModal(row){
+  const logoUrl = driveDirectLink(row['Logo URL']);
+  const tags = splitList(row['Tags']);
+  const investors = splitList(row['Key Investors']);
+  const tech = splitList(row['Underlying Tech']);
+  const founders = splitList(row['Founders']);
+  const fields = [
+    ['Business Model', row['Business Model']],
+    ['Funding Stage', row['Funding Stage']],
+    ['Team Size', row['Team Size']],
+    ['Status', row['Status']],
+    ['Primary Competition', row['Primary Competition']],
+    ['User Base', row['User Base']],
+    ['Competitive Edge', row['Competitive Edge']],
+  ];
+  const modal = document.getElementById('modalContent');
+  modal.innerHTML = `
+    <button class="modal-close" onclick="closeModal()">&times;</button>
+    <div class="modal-head">
+      ${logoUrl ? `<img class="logo" src="${logoUrl}" onerror="this.outerHTML='<div class=logo-fallback>${initials(row['Startup Name'])}</div>'">` : `<div class="logo-fallback">${initials(row['Startup Name'])}</div>`}
+      <div>
+        <h2>${row['Startup Name']}</h2>
+        <div class="card-loc">${clean(row['Headquarters']) || '—'} · Est. ${clean(row['Founded In']) || '—'}</div>
+      </div>
+    </div>
+    <p class="modal-tagline">${row['Tagline / Description'] || ''}</p>
+    <button type="button" class="compare-btn" id="modalCompareBtn">+ Add to comparison</button>
+    <div class="field-grid">
+      ${fields.filter(f=>clean(f[1])).map(f=>`<div class="field"><label>${f[0]}</label><div>${f[1]}</div></div>`).join('')}
+    </div>
+    <div id="modalFoundersWrap"></div>
+    <div id="modalTechWrap"></div>
+    <div id="modalTagsWrap"></div>
+    <div id="modalInvestorsWrap"></div>
+    ${clean(row['Website URL']) ? `<a class="visit-btn" href="${row['Website URL']}" target="_blank" rel="noopener">Visit website →</a>` : ''}
+  `;
+
+  const modalCompareBtn = document.getElementById('modalCompareBtn');
+  modalCompareBtn.addEventListener('click', ()=> toggleCompare(row));
+  syncModalCompareButton(row);
+
+  // Founders — click one to see their LinkedIn + full business history.
+  const foundersWrap = document.getElementById('modalFoundersWrap');
+  if(founders.length){
+    const group = document.createElement('div');
+    group.className = 'pill-group';
+    const label = document.createElement('div');
+    label.className = 'pill-group-label';
+    label.textContent = 'Founders — click for LinkedIn & business history';
+    group.appendChild(label);
+    const row2 = document.createElement('div');
+    row2.className = 'pill-row';
+    founders.forEach(name=>{
+      const el = document.createElement('span');
+      el.className = 'founder-pill clickable';
+      el.textContent = name;
+      el.addEventListener('click', ()=> openFounderPopup(name));
+      row2.appendChild(el);
+    });
+    group.appendChild(row2);
+    foundersWrap.appendChild(group);
+  }
+
+  // Underlying Tech — click one to see every startup built on the same core tech,
+  // regardless of sector (this is the "same tech, different product" cross-link).
+  const techWrap = document.getElementById('modalTechWrap');
+  if(tech.length){
+    const group = document.createElement('div');
+    group.className = 'pill-group';
+    const label = document.createElement('div');
+    label.className = 'pill-group-label';
+    label.textContent = 'Underlying tech — click to see who else is built on it';
+    group.appendChild(label);
+    const row2 = document.createElement('div');
+    row2.className = 'pill-row';
+    tech.forEach(t=>{
+      const el = document.createElement('span');
+      el.className = 'tech-pill clickable';
+      el.textContent = t;
+      el.addEventListener('click', ()=> openTechList(t));
+      row2.appendChild(el);
+    });
+    group.appendChild(row2);
+    techWrap.appendChild(group);
+  }
+
+  // Tags — click one to see every startup sharing that tag.
+  const tagsWrap = document.getElementById('modalTagsWrap');
+  if(tags.length){
+    const group = document.createElement('div');
+    group.className = 'pill-group';
+    const label = document.createElement('div');
+    label.className = 'pill-group-label';
+    label.textContent = 'Tags — click to see related startups';
+    group.appendChild(label);
+    const row2 = document.createElement('div');
+    row2.className = 'pill-row';
+    tags.forEach(t=>{
+      const el = document.createElement('span');
+      el.className = 'sector-tag clickable';
+      el.textContent = t;
+      el.addEventListener('click', ()=> openTagList(t));
+      row2.appendChild(el);
+    });
+    group.appendChild(row2);
+    tagsWrap.appendChild(group);
+  }
+
+  // Investors — click one to see every startup they've backed.
+  const investorsWrap = document.getElementById('modalInvestorsWrap');
+  if(investors.length){
+    const group = document.createElement('div');
+    group.className = 'pill-group';
+    const label = document.createElement('div');
+    label.className = 'pill-group-label';
+    label.textContent = 'Key investors — click to see their portfolio';
+    group.appendChild(label);
+    const row2 = document.createElement('div');
+    row2.className = 'pill-row';
+    investors.forEach(inv=>{
+      const el = document.createElement('span');
+      el.className = 'investor-pill clickable';
+      el.textContent = inv;
+      el.addEventListener('click', ()=> openInvestorList(inv));
+      row2.appendChild(el);
+    });
+    group.appendChild(row2);
+    investorsWrap.appendChild(group);
+  }
+
+  document.getElementById('overlay').classList.add('open');
+}
+function closeModal(){ document.getElementById('overlay').classList.remove('open'); }
+document.getElementById('overlay').addEventListener('click', e=>{ if(e.target.id==='overlay') closeModal(); });
+
+// ---- Tag / investor popup table ----
+function showListModal(title, matches){
+  const modal = document.getElementById('listModalContent');
+  modal.innerHTML = `
+    <button class="modal-close" onclick="closeListModal()">&times;</button>
+    <h2 style="margin-bottom:4px;">${title}</h2>
+    <div class="card-loc" style="margin-bottom:22px;">${matches.length} startup${matches.length === 1 ? '' : 's'}</div>
+    <div id="listRows" class="list-rows"></div>
+  `;
+  const rowsWrap = document.getElementById('listRows');
+  if(matches.length === 0){
+    rowsWrap.innerHTML = `<div class="empty" style="padding:30px 0;">No startups found.</div>`;
+  } else {
+    matches.forEach(row=>{
+      const logoUrl = driveDirectLink(row['Logo URL']);
+      const r = document.createElement('div');
+      r.className = 'list-row';
+      r.innerHTML = `
+        ${logoUrl ? `<img class="logo" src="${logoUrl}" onerror="this.outerHTML='<div class=logo-fallback>${initials(row['Startup Name'])}</div>'">` : `<div class="logo-fallback">${initials(row['Startup Name'])}</div>`}
+        <div class="list-row-info">
+          <div class="card-name">${row['Startup Name']}</div>
+          <div class="card-loc">${clean(row['Headquarters']) || '—'} · ${clean(row['Sector']) || '—'}</div>
+        </div>
+        <div class="funding">${clean(row['Funding Amount']) || '—'}</div>
+      `;
+      r.addEventListener('click', ()=>{ closeListModal(); openModal(row); });
+      rowsWrap.appendChild(r);
+    });
+  }
+  document.getElementById('listOverlay').classList.add('open');
+}
+function closeListModal(){ document.getElementById('listOverlay').classList.remove('open'); }
+document.getElementById('listOverlay').addEventListener('click', e=>{ if(e.target.id==='listOverlay') closeListModal(); });
+
+// ============================================================
+// SUGGEST-A-STARTUP SUBMISSIONS
+// Submits to a dedicated Apps Script Web App (separate from the
+// missed-search logger) that appends each entry to a "Submissions"
+// tab — never directly to Active Ledger — so nothing goes live
+// without you reviewing it first.
+//
+// SETUP REQUIRED: paste your deployed Web App URL below. See
+// submit-startup.gs for the script + deployment instructions.
+// ============================================================
+const SUBMISSION_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzWTxHdENG8WbLHSCaesT7y7bLVk6Gu38LBYJQQFqi42Zh-dvxVEvfn4MwCdw7FifiH/exec";
+let submitModalOpenedAt = 0;
+
+function openSubmitModal(){
+  document.getElementById('submitOverlay').classList.add('open');
+  submitModalOpenedAt = Date.now();
+}
+function closeSubmitModal(){
+  document.getElementById('submitOverlay').classList.remove('open');
+}
+document.getElementById('submitOverlay').addEventListener('click', e=>{ if(e.target.id==='submitOverlay') closeSubmitModal(); });
+
+document.getElementById('submitForm').addEventListener('submit', function(e){
+  e.preventDefault();
+  const form = e.target;
+  const statusEl = document.getElementById('submitFormStatus');
+  const btn = document.getElementById('submitFormBtn');
+
+  // Honeypot — real visitors never see or fill this field. If it's filled, it's a bot;
+  // pretend success and send nothing rather than tipping off the bot to adapt.
+  if(form.website_confirm.value.trim() !== ''){
+    statusEl.textContent = 'Thanks — your suggestion has been sent.';
+    statusEl.className = 'form-status success';
+    form.reset();
+    setTimeout(closeSubmitModal, 1500);
+    return;
+  }
+
+  // A real person takes at least a couple seconds to read and fill this out.
+  if(Date.now() - submitModalOpenedAt < 2500){
+    statusEl.textContent = 'Please take a moment to fill out the form.';
+    statusEl.className = 'form-status error';
+    return;
+  }
+
+  if(!SUBMISSION_APPS_SCRIPT_URL || SUBMISSION_APPS_SCRIPT_URL.indexOf("PASTE_YOUR") === 0){
+    statusEl.textContent = "Submissions aren't set up yet — please reach out to us directly instead.";
+    statusEl.className = 'form-status error';
+    return;
+  }
+
+  const payload = {
+    formType: "activeSuggestion",
+    submitterName: form.submitterName.value.trim(),
+    submitterEmail: form.submitterEmail.value.trim(),
+    relationship: form.relationship.value,
+    startupStatus: form.startupStatus.value,
+    startupName: form.startupName.value.trim(),
+    startupWebsite: form.startupWebsite.value.trim(),
+    tagline: form.tagline.value.trim(),
+    sector: form.sector.value.trim(),
+    notes: form.notes.value.trim(),
+  };
+
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  statusEl.textContent = '';
+  statusEl.className = 'form-status';
+
+  fetch(SUBMISSION_APPS_SCRIPT_URL, {
+    method: "POST",
+    body: JSON.stringify(payload),
+    headers: { "Content-Type": "text/plain;charset=utf-8" } // avoids CORS preflight issues with Apps Script
+  })
+    .then(res => res.text().then(text => ({ status: res.status, ok: res.ok, text })))
+    .then(({ status, ok, text }) => {
+      let data = null;
+      try { data = JSON.parse(text); } catch(_) { /* not JSON — handled below */ }
+
+      if(ok && data && data.ok){
+        statusEl.textContent = "Thanks — your suggestion has been sent for review.";
+        statusEl.className = 'form-status success';
+        form.reset();
+        setTimeout(closeSubmitModal, 1800);
+      } else {
+        // Surface the real reason instead of silently declaring success —
+        // this is what actually tells you (and us) what's misconfigured.
+        const reason = data && data.error ? data.error : `HTTP ${status}: ${text.slice(0, 200)}`;
+        console.error('Submission failed:', reason);
+        statusEl.textContent = "That didn't go through (" + reason + "). Please try again or email us directly.";
+        statusEl.className = 'form-status error';
+      }
+      btn.disabled = false;
+      btn.textContent = 'Send suggestion';
+    })
+    .catch((err) => {
+      console.error('Submission network error:', err);
+      statusEl.textContent = "Something went wrong sending that — please try again or email us directly.";
+      statusEl.className = 'form-status error';
+      btn.disabled = false;
+      btn.textContent = 'Send suggestion';
+    });
+});
+
+function openTagList(tag){
+  const norm = tag.trim().toLowerCase();
+  const matches = ALL.filter(r => splitList(r['Tags']).some(t => t.toLowerCase() === norm));
+  showListModal(`Tag — ${tag}`, matches);
+}
+function openInvestorList(investor){
+  const norm = investor.trim().toLowerCase();
+  const matches = ALL.filter(r => splitList(r['Key Investors']).some(t => t.toLowerCase() === norm));
+  showListModal(`Investor — ${investor}`, matches);
+}
+function openTechList(tech){
+  const norm = tech.trim().toLowerCase();
+  const matches = ALL.filter(r => splitList(r['Underlying Tech']).some(t => t.toLowerCase() === norm));
+  showListModal(`Underlying Tech — ${tech}`, matches);
+}
+
+function openFounderPopup(name){
+  const norm = name.trim().toLowerCase();
+  const info = FOUNDERS_LOOKUP[norm];
+  const modal = document.getElementById('listModalContent');
+
+  const linkedinHtml = (info && info.linkedin)
+    ? `<a class="visit-btn" href="${info.linkedin}" target="_blank" rel="noopener" style="margin-bottom:22px; display:inline-block;">View LinkedIn →</a>`
+    : `<div class="card-loc" style="margin-bottom:22px;">No LinkedIn on file yet.</div>`;
+
+  modal.innerHTML = `
+    <button class="modal-close" onclick="closeListModal()">&times;</button>
+    <h2 style="margin-bottom:4px;">${info ? info.displayName : name}</h2>
+    ${linkedinHtml}
+    <div class="pill-group-label" style="margin-bottom:10px;">Startups & Businesses</div>
+    <div id="founderBusinessRows" class="list-rows"></div>
+  `;
+
+  const rowsWrap = document.getElementById('founderBusinessRows');
+  const businesses = info ? info.businesses : [];
+
+  if(businesses.length === 0){
+    rowsWrap.innerHTML = `<div class="empty" style="padding:30px 0;">No businesses on file for this founder yet — add them to the "Founders" tab.</div>`;
+  } else {
+    businesses.forEach(bizName=>{
+      // If this name matches a startup currently tracked on the ledger, make the row
+      // clickable through to its full detail view; otherwise show it as plain info.
+      const matchingStartup = ALL.find(r => (r['Startup Name']||'').trim().toLowerCase() === bizName.trim().toLowerCase());
+      const r = document.createElement('div');
+      r.className = 'list-row';
+
+      if(matchingStartup){
+        const logoUrl = driveDirectLink(matchingStartup['Logo URL']);
+        r.innerHTML = `
+          ${logoUrl ? `<img class="logo" src="${logoUrl}" onerror="this.outerHTML='<div class=logo-fallback>${initials(matchingStartup['Startup Name'])}</div>'">` : `<div class="logo-fallback">${initials(matchingStartup['Startup Name'])}</div>`}
+          <div class="list-row-info">
+            <div class="card-name">${matchingStartup['Startup Name']}</div>
+            <div class="card-loc">${clean(matchingStartup['Headquarters']) || '—'} · ${clean(matchingStartup['Sector']) || '—'}</div>
+          </div>
+          <div class="funding">${clean(matchingStartup['Funding Amount']) || '—'}</div>
+        `;
+        r.addEventListener('click', ()=>{ closeListModal(); openModal(matchingStartup); });
+      } else {
+        r.innerHTML = `
+          <div class="logo-fallback">${initials(bizName)}</div>
+          <div class="list-row-info">
+            <div class="card-name">${bizName}</div>
+            <div class="card-loc">Not currently tracked here</div>
+          </div>
+        `;
+        r.style.cursor = 'default';
+      }
+      rowsWrap.appendChild(r);
+    });
+  }
+
+  document.getElementById('listOverlay').classList.add('open');
+}
+
+function applyFilters(){
+  const q = document.getElementById('search').value.toLowerCase();
+  const sector = document.getElementById('sectorFilter').value;
+  const status = document.getElementById('statusFilter').value;
+  const techVal = document.getElementById('techFilter').value;
+  const sortBy = document.getElementById('sortBy').value;
+
+  let list = ALL.filter(row=>{
+    const hay = `${row['Startup Name']} ${row['Founders']} ${row['Key Investors']} ${row['Tagline / Description']} ${row['Tags']} ${row['Underlying Tech']}`.toLowerCase();
+    if(q && !hay.includes(q)) return false;
+    if(sector && row['Sector'] !== sector) return false;
+    if(status && row['Status'] !== status) return false;
+    if(techVal && !splitList(row['Underlying Tech']).some(t => t.toLowerCase() === techVal.toLowerCase())) return false;
+    return true;
+  });
+
+  if(sortBy === 'name') list.sort((a,b)=> a['Startup Name'].localeCompare(b['Startup Name']));
+  if(sortBy === 'year-desc') list.sort((a,b)=> (parseInt(b['Founded In'])||0) - (parseInt(a['Founded In'])||0));
+  if(sortBy === 'year-asc') list.sort((a,b)=> (parseInt(a['Founded In'])||0) - (parseInt(b['Founded In'])||0));
+  if(sortBy === 'featured') list.sort((a,b)=> (clean(b['Featured']).toLowerCase()==='yes') - (clean(a['Featured']).toLowerCase()==='yes'));
+
+  render(list);
+
+  // ---- Missed-search logging ----
+  clearTimeout(missTimer);
+  if(list.length === 0 && q.trim().length > 1){
+    missTimer = setTimeout(()=> logMissedSearch(q.trim()), 1200);
+  }
+}
+
+function populateFilters(data){
+  const sectors = [...new Set(data.map(r=>r['Sector']).filter(Boolean))].sort();
+  const statuses = [...new Set(data.map(r=>r['Status']).filter(v=>clean(v)))].sort();
+  // Underlying Tech is a multi-value cell (comma-separated), so flatten across all rows first.
+  const techValues = [...new Set(data.flatMap(r=>splitList(r['Underlying Tech'])))].sort();
+
+  const sf = document.getElementById('sectorFilter');
+  sf.querySelectorAll('option:not(:first-child)').forEach(o=>o.remove());
+  sectors.forEach(s=>{ const o=document.createElement('option'); o.value=s; o.textContent=s; sf.appendChild(o); });
+
+  const stf = document.getElementById('statusFilter');
+  stf.querySelectorAll('option:not(:first-child)').forEach(o=>o.remove());
+  statuses.forEach(s=>{ const o=document.createElement('option'); o.value=s; o.textContent=s; stf.appendChild(o); });
+
+  const tf = document.getElementById('techFilter');
+  tf.querySelectorAll('option:not(:first-child)').forEach(o=>o.remove());
+  techValues.forEach(t=>{ const o=document.createElement('option'); o.value=t; o.textContent=t; tf.appendChild(o); });
+}
+
+// Lower = slower scroll. This is a constant speed in pixels/second — the
+// animation's duration is calculated from it below, rather than using a
+// fixed duration, so the visual speed never changes as more startups are added.
+const TICKER_PIXELS_PER_SECOND = 40;
+
+function buildTicker(data){
+  const items = data.map(r=> `<span><b>${r['Startup Name']}</b> — ${clean(r['Funding Amount'])||'Undisclosed'} · ${r['Sector']}</span>`).join('');
+  const ticker = document.getElementById('ticker');
+  ticker.innerHTML = items + items; // duplicate for seamless loop
+
+  // Reset the animation so a resize/re-render doesn't just resume mid-cycle at the old speed.
+  ticker.style.animation = 'none';
+  // Wait a frame so scrollWidth reflects the newly-rendered content before measuring.
+  requestAnimationFrame(()=>{
+    const singleSetWidth = ticker.scrollWidth / 2; // one un-duplicated pass (keyframes move -50%)
+    const duration = Math.max(singleSetWidth / TICKER_PIXELS_PER_SECOND, 8); // 8s floor so a near-empty ticker doesn't flash by
+    ticker.style.animation = `scroll ${duration}s linear infinite`;
+  });
+}
+
+function buildStats(data){
+  const sectors = new Set(data.map(r=>r['Sector']).filter(Boolean));
+  const cities = new Set(data.map(r=>r['Headquarters']).filter(Boolean));
+  document.getElementById('statRow').innerHTML = `
+    <div class="stat"><b>${data.length}</b><span>Startups tracked</span></div>
+    <div class="stat"><b>${sectors.size}</b><span>Sectors</span></div>
+    <div class="stat"><b>${cities.size}</b><span>Cities</span></div>
+  `;
+}
+
+function parseCsvText(text){
+  const results = Papa.parse(text, { header: true, skipEmptyLines: true });
+  ALL = results.data.filter(r => clean(r['Startup Name']));
+  populateFilters(ALL);
+  buildTicker(ALL);
+  buildStats(ALL);
+  buildFeaturedCarousel(ALL);
+  applyFilters();
+}
+
+function buildFeaturedCarousel(data){
+  const list = data.filter(r => clean(r['Featured']).toLowerCase() === 'yes');
+  const wrap = document.getElementById('featCarouselWrap');
+  if(window.__featTimer) clearInterval(window.__featTimer);
+
+  if(list.length === 0){
+    wrap.innerHTML = `<div class="feat-empty">No startups marked as featured yet — set the Featured column to "Yes" on a row to spotlight it here.</div>`;
+    return;
+  }
+
+  wrap.innerHTML = `
+    <div class="feat-label">Featured — ${list.length}</div>
+    <div class="feat-carousel" id="featCarousel">
+      <div class="feat-track" id="featTrack"></div>
+    </div>
+    <div class="feat-controls">
+      <button class="feat-arrow" id="featPrev" aria-label="Previous featured startup">‹</button>
+      <div class="feat-dots" id="featDots"></div>
+      <button class="feat-arrow" id="featNext" aria-label="Next featured startup">›</button>
+    </div>
+  `;
+
+  const track = document.getElementById('featTrack');
+  const dotsWrap = document.getElementById('featDots');
+  let current = 0;
+  const total = list.length;
+
+  list.forEach((row, i)=>{
+    const logoUrl = driveDirectLink(row['Logo URL']);
+    const el = document.createElement('div');
+    el.className = 'feat-card';
+    el.innerHTML = `
+      <div class="feat-card-top">
+        ${logoUrl ? `<img class="feat-logo" src="${logoUrl}" onerror="this.outerHTML='<div class=feat-logo-fallback>${initials(row['Startup Name'])}</div>'">` : `<div class="feat-logo-fallback">${initials(row['Startup Name'])}</div>`}
+        <span class="feat-sector">${clean(row['Sector']) || '—'}</span>
+      </div>
+      <div class="feat-card-bottom">
+        <div class="feat-name">${row['Startup Name']}</div>
+        <div class="feat-loc-fund">${clean(row['Headquarters']) || '—'} · <span class="feat-funding">${clean(row['Funding Amount']) || '—'}</span></div>
+      </div>
+    `;
+    el.addEventListener('click', ()=>{
+      const pos = el.dataset.pos;
+      if(pos === 'left' || pos === 'far-left'){ goToFeat(current - 1); }
+      else if(pos === 'right' || pos === 'far-right'){ goToFeat(current + 1); }
+      else{ openModal(row); }
+    });
+    track.appendChild(el);
+
+    const dot = document.createElement('button');
+    dot.className = 'feat-dot';
+    dot.setAttribute('aria-label', `Show ${row['Startup Name']}`);
+    dot.addEventListener('click', ()=> goToFeat(i));
+    dotsWrap.appendChild(dot);
+  });
+
+  const cardEls = [...track.children];
+  const dotEls = [...dotsWrap.children];
+
+  function mod(n, m){ return ((n % m) + m) % m; }
+
+  function renderFeat(){
+    cardEls.forEach((el, i)=>{
+      const diff = mod(i - current + Math.floor(total/2), total) - Math.floor(total/2);
+      let pos = 'hidden';
+      if(diff === 0) pos = 'center';
+      else if(diff === -1) pos = 'left';
+      else if(diff === 1) pos = 'right';
+      else if(diff === -2) pos = 'far-left';
+      else if(diff === 2) pos = 'far-right';
+      el.dataset.pos = pos;
+    });
+    dotEls.forEach((d, i)=> d.classList.toggle('active', i === current));
+  }
+
+  function goToFeat(i){
+    current = mod(i, total);
+    renderFeat();
+    restartFeatTimer();
+  }
+
+  function restartFeatTimer(){
+    clearInterval(window.__featTimer);
+    if(total > 1){
+      window.__featTimer = setInterval(()=> goToFeat(current + 1), 4000);
+    }
+  }
+
+  const prevBtn = document.getElementById('featPrev');
+  const nextBtn = document.getElementById('featNext');
+  const featCarousel = document.getElementById('featCarousel');
+
+  nextBtn.addEventListener('click', ()=> goToFeat(current + 1));
+  prevBtn.addEventListener('click', ()=> goToFeat(current - 1));
+  featCarousel.addEventListener('mouseenter', ()=> clearInterval(window.__featTimer));
+  featCarousel.addEventListener('mouseleave', restartFeatTimer);
+
+  if(total <= 1){
+    prevBtn.style.display = 'none';
+    nextBtn.style.display = 'none';
+  }
+
+  renderFeat();
+  restartFeatTimer();
+}
+
+function setSyncBadge(state){
+  // state: 'live' | 'offline'
+  const el = document.getElementById('syncBadge');
+  if(!el) return;
+  if(state === 'live'){
+    el.textContent = '● LIVE';
+    el.style.color = '#6fbf73';
+  } else {
+    el.textContent = '● SNAPSHOT';
+    el.style.color = 'var(--paper-dim)';
+    el.title = "Showing the last saved copy of your sheet. Host this file online to enable live syncing.";
+  }
+}
+
+
+// ============================================================
+// STARTUP COMPARISON (up to four companies)
+// ============================================================
+let COMPARE_SELECTED = [];
+const COMPARE_FIELDS = [
+  ['Status','Status'], ['Sector','Sector'], ['Headquarters','Headquarters'],
+  ['Founded','Founded In'], ['Funding amount','Funding Amount'], ['Funding stage','Funding Stage'],
+  ['Business model','Business Model'], ['Competitive edge','Competitive Edge'],
+  ['Underlying technology','Underlying Tech'], ['Founders','Founders'],
+  ['Key investors','Key Investors'], ['Team size','Team Size'], ['User base','User Base']
+];
+function compareValue(row,key){ return clean(row[key]) || '—'; }
+function toggleCompare(row){
+  const name=clean(row['Startup Name']);
+  const index=COMPARE_SELECTED.findIndex(x=>x['Startup Name']===name);
+  if(index>=0) COMPARE_SELECTED.splice(index,1);
+  else if(COMPARE_SELECTED.length<4) COMPARE_SELECTED.push(row);
+  else { alert('You can compare up to four startups at a time.'); return; }
+  updateCompareTray();
+  updateCompareButtons();
+  syncModalCompareButton(row);
+}
+function removeCompare(name){ COMPARE_SELECTED=COMPARE_SELECTED.filter(x=>x['Startup Name']!==name); updateCompareTray(); updateCompareButtons(); }
+function updateCompareTray(){
+  const tray=document.getElementById('compareTray');
+  const chips=document.getElementById('compareChips');
+  document.getElementById('compareCount').textContent=COMPARE_SELECTED.length;
+  chips.innerHTML=COMPARE_SELECTED.map(r=>`<span class="compare-chip">${escapeCompareText(r['Startup Name'])} <button aria-label="Remove ${escapeCompareText(r['Startup Name'])}" data-remove="${encodeURIComponent(r['Startup Name'])}">×</button></span>`).join('');
+  chips.querySelectorAll('[data-remove]').forEach(b=>b.addEventListener('click',()=>removeCompare(decodeURIComponent(b.dataset.remove))));
+  tray.classList.toggle('visible',COMPARE_SELECTED.length>0);
+  document.getElementById('openCompare').disabled=COMPARE_SELECTED.length<2;
+}
+function updateCompareButtons(){
+  document.querySelectorAll('.compare-btn[data-compare]').forEach(btn=>{
+    const name=decodeURIComponent(btn.dataset.compare);
+    const selected=COMPARE_SELECTED.some(r=>r['Startup Name']===name);
+    btn.classList.toggle('selected',selected); btn.textContent=selected?'✓ Added to compare':'＋ Compare';
+  });
+}
+function syncModalCompareButton(row){
+  const btn=document.getElementById('modalCompareBtn'); if(!btn) return;
+  const selected=COMPARE_SELECTED.some(r=>r['Startup Name']===row['Startup Name']);
+  btn.classList.toggle('selected',selected); btn.textContent=selected?'✓ Remove from comparison':'＋ Add to comparison';
+}
+function escapeCompareText(value){ return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function openCompareModal(){
+  if(COMPARE_SELECTED.length<2) return;
+  const modal=document.getElementById('compareModalContent');
+  const headers=COMPARE_SELECTED.map(r=>`<th>${escapeCompareText(r['Startup Name'])}</th>`).join('');
+  const rows=COMPARE_FIELDS.map(([label,key])=>`<tr><th>${escapeCompareText(label)}</th>${COMPARE_SELECTED.map(r=>`<td>${escapeCompareText(compareValue(r,key))}</td>`).join('')}</tr>`).join('');
+  modal.innerHTML=`<button class="modal-close" id="closeCompare">&times;</button><h2>Compare startups</h2><p class="modal-tagline">A side-by-side view of the selected companies.</p><div class="compare-scroll"><table class="compare-table"><thead><tr><th>Details</th>${headers}</tr></thead><tbody>${rows}</tbody></table></div>`;
+  document.getElementById('closeCompare').addEventListener('click',closeCompareModal);
+  document.getElementById('compareOverlay').classList.add('open');
+}
+function closeCompareModal(){ document.getElementById('compareOverlay').classList.remove('open'); }
+document.getElementById('clearCompare').addEventListener('click',()=>{COMPARE_SELECTED=[];updateCompareTray();updateCompareButtons();syncModalCompareButton({ 'Startup Name':'' });});
+document.getElementById('openCompare').addEventListener('click',openCompareModal);
+document.getElementById('compareOverlay').addEventListener('click',e=>{if(e.target.id==='compareOverlay')closeCompareModal();});
+
+function loadData(){
+  // Render immediately from the baked-in snapshot so the page is never blank.
+  parseCsvText(FALLBACK_CSV);
+  setSyncBadge('offline');
+
+  // Then quietly try to fetch the live sheet in the background. If this file is
+  // hosted on a real domain, this will usually succeed and silently refresh the data.
+  fetch(CSV_URL, { cache: "no-store" })
+    .then(res => { if(!res.ok) throw new Error(`HTTP ${res.status}`); return res.text(); })
+    .then(text => {
+      if(!text || text.trim().length === 0) throw new Error("Empty response");
+      parseCsvText(text);
+      setSyncBadge('live');
+    })
+    .catch(() => {
+      // Silent fail — the snapshot is already showing, so no need to alarm the user.
+      setSyncBadge('offline');
+    });
+}
+
+// ============================================================
+// MISSED-SEARCH LOGGING
+// Whenever a search returns zero results, the term gets POSTed
+// to a Google Apps Script Web App, which appends it to a
+// "Missed Searches" tab in your Google Sheet.
+//
+// SETUP REQUIRED: paste your Apps Script deployment URL below.
+// See the step-by-step instructions provided alongside this file.
+// ============================================================
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwY25T6iM6aX5fl1lw1O---EfET06AIr1f6oHBiHjs1u5qTofLzEVHGkeIc413CiS3f/exec";
+const loggedTerms = new Set();
+let missTimer = null;
+
+function logMissedSearch(term){
+  term = term.trim().toLowerCase();
+  if(!term || loggedTerms.has(term)) return;
+  if(!APPS_SCRIPT_URL || APPS_SCRIPT_URL.indexOf("PASTE_YOUR") === 0){
+    console.warn("Missed-search logging skipped: APPS_SCRIPT_URL not configured yet.");
+    return;
+  }
+  loggedTerms.add(term);
+  fetch(APPS_SCRIPT_URL, {
+    method: "POST",
+    body: JSON.stringify({ keyword: term }),
+    headers: { "Content-Type": "text/plain;charset=utf-8" } // avoids CORS preflight issues with Apps Script
+  }).catch(()=>{}); // fail silently, don't block the UI
+}
+
+loadData();
+loadFoundersData();
+
+document.getElementById('search').addEventListener('input', applyFilters);
+document.getElementById('sectorFilter').addEventListener('change', applyFilters);
+document.getElementById('techFilter').addEventListener('change', applyFilters);
+document.getElementById('statusFilter').addEventListener('change', applyFilters);
+document.getElementById('sortBy').addEventListener('change', applyFilters);
+</script>
+<script src="site.js" defer></script>
+</body>
+</html>
