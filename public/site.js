@@ -3,7 +3,7 @@
 (function(){
 // ====== CONFIG: paste each new tab's gid (the number after "gid=" in its published link) ======
 const SHEET="https://docs.google.com/spreadsheets/d/e/2PACX-1vSnzz7ZtIZdVOzq9FJLG0x1Hz2Y6XYNkTsveYm_sJheBoPIP-jhL27SBGl57CLMJirXvzjSQ4X-CMmB/pub";
-const GIDS={ledger:"0",settings:"2125262912",nav:"763580476",pages:"1940886012",team:"2027713606",highlights:"1687804525"};
+const GIDS={ledger:"0",settings:"",nav:"",pages:"",team:"",highlights:""};
 // Until a gid is filled in, the built-in defaults below are used, so the site works on day one.
 
 const DEF={
@@ -17,12 +17,12 @@ settings:{site_name:"Useful Startups",tagline:"India's startup ledger and news, 
  terms_title:"Terms of Use",terms_intro:"The rules for using this website.",
  privacy_title:"Privacy Policy",privacy_intro:"What we collect and why.",
  legal_updated:"",contact_email:"hello@example.com",contact_phone:"",address:"",
- linkedin:"",twitter:"",instagram:"",youtube:"",contact_form_url:"",logo_url:"",
+ linkedin:"",twitter:"",instagram:"",facebook:"",youtube:"",discord:"",blog:"",whatsapp:"",contact_form_url:"",logo_url:"",
  footer_blurb:"Tracking India's startups, one row at a time.",copyright:"© 2026 Useful Startups. All rights reserved."},
-nav:[{Label:"Home",URL:"index.html",Location:"header",Order:1},{Label:"Ledger",URL:"ledger.html",Location:"both",Order:2},
- {Label:"News",URL:"news.html",Location:"both",Order:3},{Label:"About",URL:"about.html",Location:"both",Order:4},
- {Label:"Team",URL:"team.html",Location:"both",Order:5},{Label:"Contact",URL:"contact.html",Location:"both",Order:6},
- {Label:"Terms",URL:"terms.html",Location:"footer",Order:7},{Label:"Privacy",URL:"privacy.html",Location:"footer",Order:8}],
+nav:[{Label:"Home",URL:"index.html",Location:"header",Order:1},{Label:"Ledger",URL:"ledger.html",Location:"both",Group:"Directories",Order:2},
+ {Label:"News",URL:"news.html",Location:"both",Group:"Resources",Order:3},{Label:"About",URL:"about.html",Location:"both",Group:"Company",Order:4},
+ {Label:"Team",URL:"team.html",Location:"both",Group:"Company",Order:5},{Label:"Contact",URL:"contact.html",Location:"both",Group:"Company",Order:6},
+ {Label:"Terms",URL:"terms.html",Location:"footer",Group:"Resources",Order:7},{Label:"Privacy",URL:"privacy.html",Location:"footer",Group:"Resources",Order:8}],
 highlights:[{Value:"auto:startups",Label:"Startups tracked",Order:1},{Value:"Hourly",Label:"News refresh",Order:2},{Value:"100%",Label:"Free to browse",Order:3}],
 team:[{Name:"Founder Name",Role:"Founder",Bio:"Edit this in the Team tab of your Google Sheet.",Order:1}],
 pages:[
@@ -81,12 +81,28 @@ function shell(S,nav){
  nv.innerHTML=`<div class="ul-nav-in">${brand}<nav class="ul-links" id="ulLinks">${items.filter(r=>loc(r,"header")).map(link).join("")}</nav><button class="ul-burger" aria-label="Menu" id="ulBurger">☰</button></div>`;
  document.body.insertBefore(nv,document.body.firstChild);
  $("#ulBurger").onclick=()=>$("#ulLinks").classList.toggle("open");
- const soc=[["linkedin","LinkedIn"],["twitter","X / Twitter"],["instagram","Instagram"],["youtube","YouTube"]].filter(x=>S[x[0]]).map(x=>`<a href="${esc(url(S[x[0]]))}" target="_blank" rel="noopener">${x[1]}</a>`).join("");
+ const sv=(p,f)=>`<svg viewBox="0 0 24 24" ${f?'fill="currentColor"':'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"'}>${p}</svg>`;
+ const WA=sv('<path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.39 1.26 4.81L2 22l5.41-1.35a9.86 9.86 0 0 0 4.63 1.15h.01c5.46 0 9.9-4.45 9.9-9.9C21.96 6.45 17.51 2 12.04 2zm5.8 14.18c-.24.68-1.4 1.3-1.93 1.37-.5.07-1.13.1-1.82-.11-.42-.13-.96-.31-1.65-.6-2.9-1.25-4.79-4.17-4.93-4.36-.14-.19-1.18-1.57-1.18-3 0-1.42.75-2.12 1.02-2.41.27-.29.58-.36.78-.36.19 0 .39 0 .56.01.18.01.42-.07.65.5.24.58.82 2 .89 2.15.07.14.12.31.02.5-.1.19-.15.31-.29.48-.15.17-.31.38-.44.51-.14.14-.29.29-.13.58.17.29.75 1.24 1.62 2.01 1.12.99 2.06 1.3 2.35 1.44.29.14.46.12.63-.07.17-.19.72-.84.92-1.13.19-.29.39-.24.65-.14.27.1 1.68.79 1.97.94.29.14.48.21.55.33.07.12.07.68-.17 1.36z"/>',1);
+ const SOC=[["linkedin","LinkedIn",sv('<path d="M6.94 5a2 2 0 1 1-4-.01 2 2 0 0 1 4 .01zM7 8.48H3V21h4V8.48zm6.32 0H9.35V21h3.97v-6.57c0-3.66 4.77-3.96 4.77 0V21H22v-7.93c0-6.17-7.06-5.94-8.68-2.91V8.48z"/>',1)],
+  ["twitter","X",sv('<path d="M18.9 2H22l-7.6 8.7L23 22h-6.9l-5.4-6.9L4.5 22H1.4l8.1-9.3L1 2h7l4.9 6.3L18.9 2zm-1.2 18h1.9L7.4 4H5.4l12.3 16z"/>',1)],
+  ["instagram","Instagram",sv('<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r=".6"/>')],
+  ["facebook","Facebook",sv('<path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>')],
+  ["youtube","YouTube",sv('<path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/><path d="m9.75 15.02 5.75-3.27-5.75-3.27z"/>')],
+  ["discord","Discord",sv('<path d="M20.3 4.4A17 17 0 0 0 16 3l-.2.4a15 15 0 0 1 3.8 1.9 13 13 0 0 0-11.2 0A15 15 0 0 1 12.2 3.4L12 3a17 17 0 0 0-4.3 1.4C5 8.4 4.3 12.3 4.6 16.1a17 17 0 0 0 5.2 2.6l.9-1.4a11 11 0 0 1-1.5-.7l.4-.3a12 12 0 0 0 10.8 0l.4.3c-.5.3-1 .5-1.5.7l.9 1.400a17 17 0 0 0 5.2-2.600c.4-4.4-.7-8.3-3.1-11.700zM9.5 13.800c-.9 0-1.6-.8-1.6-1.800s.7-1.8 1.6-1.8 1.6.8 1.6 1.8-.7 1.8-1.6 1.800zm5 0c-.9 0-1.6-.8-1.6-1.800s.7-1.8 1.6-1.8 1.6.8 1.6 1.8-.7 1.8-1.6 1.800z"/>',1)],
+  ["blog","Blog",sv('<path d="M4 6h16M4 12h10M4 18h14"/>')]];
+ const soc=SOC.filter(x=>S[x[0]]).map(x=>`<a class="ul-soc" href="${esc(url(S[x[0]]))}" target="_blank" rel="noopener" aria-label="${x[1]}">${x[2]}</a>`).join("");
+ const groups={};items.filter(r=>loc(r,"footer")).forEach(r=>{const g=clean(r.Group)||"Company";(groups[g]=groups[g]||[]).push(r)});
+ const cols=Object.keys(groups).map(g=>`<div><h4>${esc(g)}</h4>${groups[g].map(link).join("")}</div>`).join("");
+ const wa=S.whatsapp?(/^https?:/.test(S.whatsapp)?S.whatsapp:"https://wa.me/"+S.whatsapp.replace(/\D/g,"")):"";
+ const ctRows=[[S.contact_email&&"mailto:"+S.contact_email,S.contact_email,sv('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>')],
+  [S.contact_phone&&"tel:"+S.contact_phone.replace(/\s/g,""),S.contact_phone,sv('<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>')],
+  [wa,wa&&"Chat on WhatsApp",WA],
+  [S.address&&"-",S.address,sv('<path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>')]];
+ const ct=ctRows.filter(r=>r[1]).map(r=>{const inner=`<i>${r[2]}</i><span>${esc(r[1])}</span>`;return r[0]==="-"?`<div class="ul-ct">${inner}</div>`:`<a class="ul-ct" href="${esc(url(r[0]))}"${/^https/.test(r[0])?' target="_blank" rel="noopener"':""}>${inner}</a>`}).join("");
  const ft=document.createElement("div");ft.className="ul-foot";
- ft.innerHTML=`<div class="ul-foot-in"><div>${brand}<p>${esc(S.footer_blurb)}</p></div>
- <div><h4>Explore</h4>${items.filter(r=>loc(r,"footer")&&!/terms|privacy/i.test(r.URL)).map(link).join("")}</div>
- <div><h4>Legal &amp; Social</h4>${items.filter(r=>loc(r,"footer")&&/terms|privacy/i.test(r.URL)).map(link).join("")}${soc}</div></div>
- <div class="ul-copy"><span>${esc(S.copyright)}</span><span>${S.contact_email?`<a style="display:inline" href="mailto:${esc(S.contact_email)}">${esc(S.contact_email)}</a>`:""}</span></div>`;
+ ft.innerHTML=`<div class="ul-foot-in"><div class="ul-fb">${brand}<p>${esc(S.footer_blurb)}</p><div class="ul-socs">${soc}</div></div>
+ <div class="ul-groups">${cols}</div><div><h4>Get in touch</h4>${ct}</div></div>
+ <div class="ul-copy"><span>${esc(S.copyright)}</span><a href="#" style="display:inline" onclick="window.scrollTo({top:0,behavior:'smooth'});return false">Back to top</a></div>`;
  document.body.appendChild(ft);
  const h=nv.offsetHeight;if(h)document.documentElement.style.setProperty("--ul-nav-h",h+"px");
 }
@@ -107,7 +123,7 @@ function contactPage(S){
  const row=(l,v)=>v?`<div><label>${l}</label>${v}</div>`:"";
  return pageHead(S,"contact")+`<div class="ul-wrap"><div class="ul-contact"><div class="ul-info rv">
  ${row("Email",S.contact_email&&`<a href="mailto:${esc(S.contact_email)}">${esc(S.contact_email)}</a>`)}${row("Phone",esc(S.contact_phone))}${row("Address",esc(S.address))}
- ${row("Follow",["linkedin","twitter","instagram","youtube"].filter(k=>S[k]).map(k=>`<a href="${esc(url(S[k]))}" target="_blank" rel="noopener">${k}</a>`).join(" · "))}</div>
+ ${row("Follow",["linkedin","twitter","instagram","facebook","youtube","discord"].filter(k=>S[k]).map(k=>`<a href="${esc(url(S[k]))}" target="_blank" rel="noopener">${k}</a>`).join(" · "))}</div>
  <form class="ul-form rv" id="ulForm"><label>Your name</label><input name="fname" required><label>Your email</label><input type="email" name="femail" required>
  <label>Message</label><textarea name="fmsg" required></textarea><div class="ul-hp"><input name="hp" tabindex="-1" autocomplete="off"></div>
  <button class="ul-btn" type="submit">Send message</button><div class="ul-status" id="ulStatus"></div></form></div></div>`;
